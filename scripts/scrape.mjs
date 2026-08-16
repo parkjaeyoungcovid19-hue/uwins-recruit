@@ -137,17 +137,30 @@ async function autoLogin(page, id, pw) {
   await page.locator('#CP1_btnLogin').click().catch(() => {});
 
   let loggedIn = false;
-  for (let i = 0; i < 90; i++) {
+  const loggedInUrl = (u) =>
+    u.includes('uwins.ulsan.ac.kr') && !u.includes('/Login.aspx') && !u.includes('s.ulsan.ac.kr');
+  for (let i = 0; i < 180; i++) {
     await page.waitForTimeout(1000);
     const u = page.url();
-    if (u.includes('uwins.ulsan.ac.kr') && !u.includes('/Login.aspx') && !u.includes('s.ulsan.ac.kr')) {
+    if (loggedInUrl(u)) {
       loggedIn = true;
       break;
+    }
+    // URL 판정이 어려울 때: uwins 페이지에 로그인 흔적(세션 카운트다운/로그아웃)이 있는지
+    if (u.includes('uwins.ulsan.ac.kr') && !u.includes('/Login.aspx')) {
+      const hasSession = await page
+        .evaluate(() => /(남음|로그아웃)/.test(document.body ? document.body.innerText : ''))
+        .catch(() => false);
+      if (hasSession) {
+        loggedIn = true;
+        break;
+      }
     }
     if (await page.locator('.captcha-lay').isVisible().catch(() => false)) {
       log('✗ 보안문자(CAPTCHA) 요구 감지 — 자동 로그인 불가');
       break;
     }
+    if (i % 30 === 29) log(`  ↳ 로그인 대기 ${i + 1}초 (현재 URL: ${u.slice(0, 70)})`);
   }
 
   if (!loggedIn) {
