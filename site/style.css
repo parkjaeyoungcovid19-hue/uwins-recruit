@@ -270,6 +270,7 @@ button { font-family: inherit; }
 }
 .lock-form button:hover { background: #000; }
 .lock-err { color: var(--red); font-size: 13px; margin: 10px 0 0; }
+.lock-ver { position: fixed; bottom: 14px; right: 18px; font-size: 11px; color: var(--faint); margin: 0; }
 
 /* ── 빈 상태 ──────────────────────────────────────────────── */
 .empty { text-align: center; padding: 70px 20px; }

@@ -272,14 +272,14 @@ async function decryptData(enc, password) {
   const ct = b64ToBytes(enc.ct);
   const enc2 = new TextEncoder();
 
-  const keyMaterial = await crypto.subtle.importKey('raw', enc2.encode(password), 'PBKDF2', false, ['deriveKey']);
-  const key = await crypto.subtle.deriveKey(
+  // Safari 구형 포함 최대 호환: deriveBits → importKey 방식
+  const keyMaterial = await crypto.subtle.importKey('raw', enc2.encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
     { name: 'PBKDF2', salt, iterations: enc.kdf?.iterations || 200000, hash: 'SHA-256' },
     keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['decrypt']
+    256
   );
+  const key = await crypto.subtle.importKey('raw', bits, { name: 'AES-GCM' }, false, ['decrypt']);
   const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
   return new TextDecoder().decode(plain);
 }
@@ -316,7 +316,11 @@ function showLock() {
       syncControls();
       render();
     } catch (err) {
-      console.warn('복호화 실패:', err.message);
+      console.warn('복호화 실패:', err);
+      $('lockErr').textContent =
+        err && err.message && err.message.includes('HTTP')
+          ? `데이터 파일을 불러오지 못했습니다 (${err.message}). 새로고침 후 다시 시도해 주세요.`
+          : '비밀번호가 올바르지 않습니다.';
       $('lockErr').hidden = false;
     }
   });
