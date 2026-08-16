@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>근로장학 채용</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <!-- ── 잠금 화면 ─────────────────────────────────────────── -->
+  <div id="lock" class="lock" hidden>
+    <div class="lock-card">
+      <div class="lock-icon">🔒</div>
+      <h1 class="lock-title">비공개 페이지</h1>
+      <p class="lock-sub">보기 위한 비밀번호를 입력하세요</p>
+      <form id="lockForm" class="lock-form">
+        <input id="lockPw" type="password" placeholder="비밀번호" autocomplete="current-password" />
+        <button type="submit">열기</button>
+      </form>
+      <p id="lockErr" class="lock-err" hidden>비밀번호가 올바르지 않습니다.</p>
+    </div>
+  </div>
+  <div class="page">
+    <!-- ── 헤더 ─────────────────────────────────────────────── -->
+    <header class="topbar">
+      <div class="wrap">
+        <div class="topbar-row">
+          <div class="title-block">
+            <h1 class="page-title">근로장학 채용</h1>
+            <p class="subtitle" id="updatedAt">갱신: —</p>
+          </div>
+          <div class="stats">
+            <div class="stat"><span class="stat-num" id="statOpen">0</span><span class="stat-label">모집중</span></div>
+            <div class="stat"><span class="stat-num" id="statToday">0</span><span class="stat-label">오늘 마감</span></div>
+            <div class="stat"><span class="stat-num" id="statNew">0</span><span class="stat-label">신규</span></div>
+            <div class="stat"><span class="stat-num" id="statTotal">0</span><span class="stat-label">전체</span></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <!-- ── 검색 + 필터 버튼 ───────────────────────────────── -->
+      <div class="toolbar">
+        <div class="search-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="search" type="search" placeholder="근로지 · 기관 · 구분 검색" />
+        </div>
+        <button id="filterToggle" class="btn-ghost" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+          필터
+          <span id="filterCount" class="filter-count" hidden>0</span>
+        </button>
+      </div>
+
+      <!-- ── 활성 필터 칩 ───────────────────────────────────── -->
+      <div id="chips" class="chips" hidden></div>
+
+      <!-- ── 필터 패널 (토글) ───────────────────────────────── -->
+      <div id="filterPanel" class="filter-panel" hidden>
+        <div class="fp-group">
+          <span class="fp-label">근로구분</span>
+          <div class="segmented" id="workTypeSeg">
+            <button class="seg active" data-value="all">전체</button>
+            <button class="seg" data-value="교내근로">교내근로</button>
+            <button class="seg" data-value="국가근로">국가근로</button>
+          </div>
+        </div>
+        <div class="fp-group toggles">
+          <label class="switch"><input type="checkbox" id="onlyOpen" checked /><span class="track"></span>모집중만 보기</label>
+          <label class="switch"><input type="checkbox" id="soonOnly" /><span class="track"></span>마감임박만 (D-3 이내)</label>
+          <label class="switch"><input type="checkbox" id="newOnly" /><span class="track"></span>신규만 (NEW)</label>
+          <label class="switch"><input type="checkbox" id="hideDone" /><span class="track"></span>마감 숨김</label>
+        </div>
+        <div class="fp-group">
+          <span class="fp-label">정렬</span>
+          <div class="segmented" id="sortSeg">
+            <button class="seg active" data-value="deadline">마감임박순</button>
+            <button class="seg" data-value="newest">최신순</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── 목록 (섹션별 분류) ─────────────────────────────── -->
+      <div id="sections"></div>
+
+      <div id="empty" class="empty" hidden>
+        <p class="empty-title">조건에 맞는 공고가 없습니다</p>
+        <p class="empty-sub">필터를 풀거나 다른 검색어를 입력해 보세요.</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ── 카드 템플릿 ───────────────────────────────────────── -->
+  <template id="cardTpl">
+    <li class="card">
+      <div class="card-main">
+        <div class="card-top">
+          <h3 class="card-title"></h3>
+          <span class="badges"></span>
+        </div>
+        <div class="card-org"></div>
+        <dl class="fields">
+          <div><dt>근로시간</dt><dd class="hours"></dd></div>
+          <div><dt>근로기간</dt><dd class="period"></dd></div>
+          <div><dt>모집기간</dt><dd class="recruitRange"></dd></div>
+          <div><dt>마감</dt><dd class="deadline"></dd></div>
+        </dl>
+      </div>
+      <a class="detail" target="_blank" rel="noopener">UWINS에서 보기 →</a>
+    </li>
+  </template>
+
+  <template id="sectionTpl">
+    <section class="section">
+      <header class="section-head">
+        <h2 class="section-title"></h2>
+        <span class="section-count"></span>
+      </header>
+      <ul class="list"></ul>
+    </section>
+  </template>
+
+  <script src="./app.js"></script>
+</body>
+</html>

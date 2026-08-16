@@ -1,0 +1,17 @@
+{
+  "name": "uwins-recruit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "울산대 근로장학 채용 목록을 깔끔하게 보여주는 개인용 도구 (수집 스크립트 + 정적 사이트)",
+  "scripts": {
+    "capture": "node scripts/capture.mjs",
+    "scrape": "node scripts/scrape.mjs",
+    "parse": "node scripts/parse.mjs",
+    "probe": "node scripts/probe-session.mjs",
+    "serve": "node scripts/serve.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}

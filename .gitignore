@@ -1,0 +1,12 @@
+node_modules/
+.npm-cache/
+.pw-browsers/
+.browser-profile/
+capture/
+!capture/.gitkeep
+.env
+.deploy/
+.DS_Store
+
+# 평문 데이터는 저장소에 절대 올라가지 않음 (사이트는 site/data.enc 암호화본만 사용)
+data/recruitments.json

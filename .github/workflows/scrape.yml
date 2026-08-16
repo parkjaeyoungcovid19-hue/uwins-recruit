@@ -1,0 +1,75 @@
+name: scrape-and-publish
+
+on:
+  schedule:
+    # 3시간마다 (UTC 기준) — 한국 시간으로 하루 8회
+    - cron: '0 */3 * * *'
+  workflow_dispatch: {} # 수동 실행
+
+permissions:
+  contents: write
+  id-token: write
+  pages: write
+
+concurrency:
+  group: scrape-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Chromium 캐시
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: pw-${{ runner.os }}-
+
+      - run: npm ci
+
+      - name: Chromium 설치
+        run: npx playwright install --with-deps chromium
+
+      - name: 채용 데이터 수집 (자동 로그인)
+        run: node scripts/scrape.mjs
+        env:
+          UWINS_ID: ${{ secrets.UWINS_ID }}
+          UWINS_PW: ${{ secrets.UWINS_PW }}
+
+      - name: 사이트용 암호화
+        run: node scripts/encrypt.mjs
+        env:
+          SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
+
+      - name: 변경사항 커밋
+        run: |
+          git config user.name "recruit-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/state.json site/data.enc
+          if ! git diff --cached --quiet; then
+            git commit -m "데이터 갱신 $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          else
+            echo "변경 없음"
+          fi
+
+      - name: Pages 설정
+        uses: actions/configure-pages@v5
+
+      - name: 사이트 업로드
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: GitHub Pages 배포
+        id: deployment
+        uses: actions/deploy-pages@v4
