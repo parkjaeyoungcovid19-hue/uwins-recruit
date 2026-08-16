@@ -300,7 +300,9 @@ async function loadEncryptedData(password) {
 }
 
 function showLock() {
-  $('lock').hidden = false;
+  const lock = $('lock');
+  lock.hidden = false;
+  lock.style.display = 'flex'; // CSS 충돌과 무관하게 항상 표시
   $('lockForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const pw = $('lockPw').value;
@@ -311,7 +313,9 @@ function showLock() {
       $('updatedAt').textContent = data.updatedAt
         ? `갱신: ${fmtDate(data.updatedAt)} (총 ${allItems.length}건)`
         : '갱신: —';
-      $('lock').hidden = true;
+      // 인라인 스타일로 강제 숨김 — 어떤 CSS보다 우선 (한 번에 확실하게)
+      lock.hidden = true;
+      lock.style.display = 'none';
       bindEvents();
       syncControls();
       render();
