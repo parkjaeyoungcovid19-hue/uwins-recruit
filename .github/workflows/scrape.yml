@@ -50,6 +50,14 @@ jobs:
         env:
           SITE_PASSWORD: ${{ secrets.SITE_PASSWORD }}
 
+      - name: 실패 진단 업로드
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-debug
+          path: debug/
+          if-no-files-found: ignore
+
       - name: 변경사항 커밋
         run: |
           git config user.name "recruit-bot"

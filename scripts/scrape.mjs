@@ -132,13 +132,17 @@ async function autoLogin(page, id, pw) {
     return false;
   }
 
-  // CAPTCHA 정책 확인 (id 입력 후 focusout 시 정책 API 호출됨)
+  // CAPTCHA 정책 확인 (id 입력 후 focusout 시 정책 API 호출됨 — 최대 8초 관찰)
   await page.fill('input#id', id).catch(() => {});
   await page.fill('input#pw', pw).catch(() => {});
   await page.locator('input#id').blur().catch(() => {});
-  await page.waitForTimeout(2000);
 
-  const captchaVisible = await page.locator('.captcha-lay').isVisible().catch(() => false);
+  let captchaVisible = false;
+  for (let i = 0; i < 8; i++) {
+    await page.waitForTimeout(1000);
+    captchaVisible = await page.locator('.captcha-lay').isVisible().catch(() => false);
+    if (captchaVisible) break;
+  }
   if (captchaVisible) {
     log('✗ 이 계정은 보안문자(CAPTCHA) 필요 — 자동 로그인 불가. 수동 로그인 필요.');
     return false;
@@ -146,12 +150,29 @@ async function autoLogin(page, id, pw) {
 
   await page.locator('.btn-login').click().catch(() => {});
   // 로그인 결과 대기 (uwins 로 돌아오면 성공)
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 25; i++) {
     await page.waitForTimeout(1000);
     if (page.url().includes('uwins.ulsan.ac.kr') && !page.url().includes('s.ulsan.ac.kr')) break;
+    if (await page.locator('.captcha-lay').isVisible().catch(() => false)) {
+      log('✗ 로그인 시도 후 보안문자(CAPTCHA)가 요구됨 — 자동 로그인 불가');
+      break;
+    }
   }
-  if (page.url().includes('s.ulsan.ac.kr')) {
-    log('✗ 로그인 실패 (아이디/비번 확인 또는 CAPTCHA).');
+
+  if (!(page.url().includes('uwins.ulsan.ac.kr') && !page.url().includes('s.ulsan.ac.kr'))) {
+    log('✗ 로그인 실패 — 진단 정보 수집 중...');
+    try {
+      await mkdir(path.join(ROOT, 'debug'), { recursive: true });
+      const bodyText = await page.evaluate(() =>
+        (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').slice(0, 400)
+      );
+      log('로그인 페이지 텍스트: ' + bodyText.slice(0, 280));
+      await page.screenshot({ path: path.join(ROOT, 'debug', 'login-fail.png'), fullPage: true }).catch(() => {});
+      await writeFile(path.join(ROOT, 'debug', 'login-fail.html'), await page.content(), 'utf8').catch(() => {});
+      log('진단 저장: debug/login-fail.{png,html}');
+    } catch {
+      /* ignore */
+    }
     return false;
   }
   log('✓ 로그인 성공');
