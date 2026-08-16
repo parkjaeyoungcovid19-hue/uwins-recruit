@@ -200,6 +200,12 @@ if (page.url().includes('MFA05U')) {
   let pw = process.env.UWINS_PW || null;
 
   if (!id || !pw) {
+    if (process.env.CI) {
+      log('✗ CI 실행인데 UWINS_ID/UWINS_PW 시크릿이 없습니다.');
+      log('  GitHub 저장소 Settings → Secrets and variables → Actions 에 두 시크릿을 등록하고 다시 실행하세요.');
+      await context.close();
+      process.exit(1);
+    }
     console.log('\n(입력한 id/pw 는 어디에도 저장되지 않습니다 — 로그인에만 사용)');
     id = (await ask('UWINS 아이디: ')).trim();
     pw = (await ask('UWINS 비밀번호: ')).trim();
