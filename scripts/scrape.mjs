@@ -137,7 +137,7 @@ async function autoLogin(page, id, pw) {
   await page.locator('#CP1_btnLogin').click().catch(() => {});
 
   let loggedIn = false;
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 90; i++) {
     await page.waitForTimeout(1000);
     const u = page.url();
     if (u.includes('uwins.ulsan.ac.kr') && !u.includes('/Login.aspx') && !u.includes('s.ulsan.ac.kr')) {

@@ -65,26 +65,31 @@ async function autoLogin(page) {
   }
   log(`자동 재로그인 시도 (id=${id})`);
   try {
-    await page.goto(SSO_ENTRY, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    // UWINS 자체 Login.aspx 경유 (페이지 JS 가 agentId=78 로 SSO 전송)
+    await page.goto('https://uwins.ulsan.ac.kr/Login.aspx', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForTimeout(3000);
-    if (!page.url().includes('s.ulsan.ac.kr')) return false;
 
-    await page.fill('input#id', id).catch(() => {});
-    await page.fill('input#pw', pw).catch(() => {});
-    await page.locator('input#id').blur().catch(() => {});
-    await page.waitForTimeout(2000);
+    await page.fill('#CP1_id', id).catch(() => {});
+    await page.fill('#CP1_pw', pw).catch(() => {});
+    await page.locator('#CP1_btnLogin').click().catch(() => {});
 
-    if (await page.locator('.captcha-lay').isVisible().catch(() => false)) {
-      log('✗ CAPTCHA 정책에 걸림 — 자동 재로그인 불가. 수동 로그인이 필요합니다.');
+    let loggedIn = false;
+    for (let i = 0; i < 90; i++) {
+      await page.waitForTimeout(1000);
+      const u = page.url();
+      if (u.includes('uwins.ulsan.ac.kr') && !u.includes('/Login.aspx') && !u.includes('s.ulsan.ac.kr')) {
+        loggedIn = true;
+        break;
+      }
+      if (await page.locator('.captcha-lay').isVisible().catch(() => false)) {
+        log('✗ CAPTCHA 정책에 걸림 — 자동 재로그인 불가. 수동 로그인이 필요합니다.');
+        return false;
+      }
+    }
+    if (!loggedIn) {
+      log(`✗ 자동 재로그인 실패 (최종 URL: ${page.url().slice(0, 80)})`);
       return false;
     }
-
-    await page.locator('.btn-login').click().catch(() => {});
-    for (let i = 0; i < 20; i++) {
-      await page.waitForTimeout(1000);
-      if (page.url().includes('uwins.ulsan.ac.kr') && !page.url().includes('s.ulsan.ac.kr')) break;
-    }
-    if (page.url().includes('s.ulsan.ac.kr')) return false;
     log('✓ 자동 재로그인 성공');
     return true;
   } catch (e) {
