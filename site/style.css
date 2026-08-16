@@ -28,6 +28,8 @@
 }
 
 * { box-sizing: border-box; }
+/* hidden 속성을 어떤 CSS보다 우선시 (잠금 화면 등 display:flex 요소에서 필수) */
+[hidden] { display: none !important; }
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--sans);
