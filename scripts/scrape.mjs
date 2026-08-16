@@ -120,53 +120,44 @@ async function collectWorkType(page, filterLabel, radioId) {
   return collectAllPages(page, filterLabel);
 }
 
-// ── SSO 자동 로그인 (CAPTCHA 정책에 안 걸린 계정 전용) ────────────
+// ── 자동 로그인 ────────────────────────────────────────────────
+// 실제 흐름: UWINS 자체 Login.aspx 에서 id/pw 입력 → 페이지 JS 가
+// agentId=78 로 s.ulsan.ac.kr/authentication/idpw/loginProcess 에 전송 → SSO 인증 → 복귀.
+const UWINS_LOGIN = 'https://uwins.ulsan.ac.kr/Login.aspx';
+
 async function autoLogin(page, id, pw) {
-  log(`SSO 자동 로그인 시도 (id=${id})`);
-  await page.goto(SSO_ENTRY, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  // s.ulsan.ac.kr 로그인 폼까지 리다이렉트될 때까지 대기
+  log(`자동 로그인 시도 (id=${id})`);
+  await page.goto(UWINS_LOGIN, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(3000);
-  const url = page.url();
-  if (!url.includes('s.ulsan.ac.kr')) {
-    log(`✗ 로그인 페이지 미도달: ${url}`);
-    return false;
-  }
 
-  // CAPTCHA 정책 확인 (id 입력 후 focusout 시 정책 API 호출됨 — 최대 8초 관찰)
-  await page.fill('input#id', id).catch(() => {});
-  await page.fill('input#pw', pw).catch(() => {});
-  await page.locator('input#id').blur().catch(() => {});
+  await page.fill('#CP1_id', id).catch(() => {});
+  await page.fill('#CP1_pw', pw).catch(() => {});
 
-  let captchaVisible = false;
-  for (let i = 0; i < 8; i++) {
+  // 페이지 자체 JS(GoToAuthentication)가 SSO 로 전송 (agentId=78)
+  await page.locator('#CP1_btnLogin').click().catch(() => {});
+
+  let loggedIn = false;
+  for (let i = 0; i < 30; i++) {
     await page.waitForTimeout(1000);
-    captchaVisible = await page.locator('.captcha-lay').isVisible().catch(() => false);
-    if (captchaVisible) break;
-  }
-  if (captchaVisible) {
-    log('✗ 이 계정은 보안문자(CAPTCHA) 필요 — 자동 로그인 불가. 수동 로그인 필요.');
-    return false;
-  }
-
-  await page.locator('.btn-login').click().catch(() => {});
-  // 로그인 결과 대기 (uwins 로 돌아오면 성공)
-  for (let i = 0; i < 25; i++) {
-    await page.waitForTimeout(1000);
-    if (page.url().includes('uwins.ulsan.ac.kr') && !page.url().includes('s.ulsan.ac.kr')) break;
+    const u = page.url();
+    if (u.includes('uwins.ulsan.ac.kr') && !u.includes('/Login.aspx') && !u.includes('s.ulsan.ac.kr')) {
+      loggedIn = true;
+      break;
+    }
     if (await page.locator('.captcha-lay').isVisible().catch(() => false)) {
-      log('✗ 로그인 시도 후 보안문자(CAPTCHA)가 요구됨 — 자동 로그인 불가');
+      log('✗ 보안문자(CAPTCHA) 요구 감지 — 자동 로그인 불가');
       break;
     }
   }
 
-  if (!(page.url().includes('uwins.ulsan.ac.kr') && !page.url().includes('s.ulsan.ac.kr'))) {
-    log('✗ 로그인 실패 — 진단 정보 수집 중...');
+  if (!loggedIn) {
+    log(`✗ 로그인 실패 (최종 URL: ${page.url().slice(0, 80)}) — 진단 정보 수집 중...`);
     try {
       await mkdir(path.join(ROOT, 'debug'), { recursive: true });
       const bodyText = await page.evaluate(() =>
         (document.body ? document.body.innerText : '').replace(/\s+/g, ' ').slice(0, 400)
       );
-      log('로그인 페이지 텍스트: ' + bodyText.slice(0, 280));
+      log('페이지 텍스트: ' + bodyText.slice(0, 280));
       await page.screenshot({ path: path.join(ROOT, 'debug', 'login-fail.png'), fullPage: true }).catch(() => {});
       await writeFile(path.join(ROOT, 'debug', 'login-fail.html'), await page.content(), 'utf8').catch(() => {});
       log('진단 저장: debug/login-fail.{png,html}');
