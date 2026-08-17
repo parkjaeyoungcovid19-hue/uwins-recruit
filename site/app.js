@@ -13,6 +13,7 @@ const state = {
   hideDone: false,
   sort: 'deadline', // deadline | newest
   panelOpen: false,
+  view: "dashboard",
 };
 
 let allItems = [];
@@ -82,10 +83,117 @@ function sortItems(items) {
   });
 }
 
+/* ── 아이콘 & 매핑 로직 ────────────────────────────────────── */
+const ICONS = {
+  '도서관': '📚', '기숙사': '🛏️', '학생생활관': '🛏️', '행정': '🏢', '본부': '🏢', 
+  '전산': '💻', 'IT': '💻', '정보통신': '💻', '병원': '🏥', '보건': '🏥', 
+  '초등': '🏫', '중학': '🏫', '고등': '🏫', '유치원': '🏫', '아동센터': '🧒', 
+  '우체국': '📮', '주민센터': '🏛️', '시청': '🏛️', '구청': '🏛️', '연구소': '🔬', 
+  '실험실': '🔬', '과학': '🔬', '체육': '⚽', '스포츠': '⚽', '예술': '🎨', 
+  '디자인': '🎨', '어학': '🌐', '글로벌': '🌐', '국제': '🌐', '취업': '💼', 
+  '진로': '💼', '단과대학': '🏛️', '학부': '🎓', '학과': '🎓', '학생회': '🗣️',
+};
+
+function getIcon(item) {
+  const text = (item.department + ' ' + item.title).toLowerCase();
+  for (const [key, icon] of Object.entries(ICONS)) {
+    if (text.includes(key)) return icon;
+  }
+  return '📁';
+}
+
+function getLocation(item) {
+  const text = (item.department + ' ' + item.title).toLowerCase();
+  if (text.includes('교외') || text.includes('외부기관') || item.category.includes('교외')) return '교외';
+  if (text.includes('교내') || text.includes('학내') || item.category.includes('교내')) return '교내';
+  if (/(초등|중|고등)학교/.test(text) || /(아동센터|우체국|주민센터|시청|구청|복지관|도서관\s*\(?공공\)?)/.test(text)) return '교외';
+  return '교내';
+}
+
+const UOU_LOCATIONS = [
+  { keywords: ['도서관', '아산도서관'], lat: 35.5441, lng: 129.2555 },
+  { keywords: ['기숙사', '학생생활관', '무거관', '기린관', '목련관'], lat: 35.5410, lng: 129.2520 },
+  { keywords: ['학생회관', '학생복지관'], lat: 35.5430, lng: 129.2570 },
+  { keywords: ['본부', '교무처', '학생처', '취업', '총무처'], lat: 35.5445, lng: 129.2580 },
+  { keywords: ['공과대학', '건축관', '산업공학', '기계', '전기', '화학', 'IT', '전산'], lat: 35.5455, lng: 129.2550 },
+  { keywords: ['자연과학', '생활과학', '과학', '실험'], lat: 35.5425, lng: 129.2545 },
+  { keywords: ['경영대학', '사회과학'], lat: 35.5435, lng: 129.2590 },
+  { keywords: ['인문대학', '어학', '국제', '글로벌'], lat: 35.5420, lng: 129.2585 },
+  { keywords: ['디자인', '예술', '음악', '미술'], lat: 35.5400, lng: 129.2560 },
+  { keywords: ['체육관', '스포츠'], lat: 35.5450, lng: 129.2510 },
+  { keywords: ['아산스포츠'], lat: 35.5470, lng: 129.2530 },
+];
+let mapInstance = null;
+let markersLayer = null;
+
+function renderMap(items) {
+  if (!mapInstance) {
+    if (typeof L === 'undefined') return;
+    mapInstance = L.map('map').setView([35.5438, 129.2562], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(mapInstance);
+    markersLayer = L.layerGroup().addTo(mapInstance);
+    setTimeout(() => mapInstance.invalidateSize(), 100);
+  }
+  markersLayer.clearLayers();
+  
+  const bounds = [];
+  const offCampusItems = [];
+  const onCampusClusters = {};
+  
+  items.forEach(item => {
+    const isOffCampus = getLocation(item) === '교외';
+    if (isOffCampus) {
+      offCampusItems.push(item);
+      return;
+    }
+    const text = item.department + ' ' + item.title;
+    let found = false;
+    for (let loc of UOU_LOCATIONS) {
+      if (loc.keywords.some(k => text.includes(k))) {
+        const key = loc.lat + ',' + loc.lng;
+        if (!onCampusClusters[key]) onCampusClusters[key] = { lat: loc.lat, lng: loc.lng, items: [] };
+        onCampusClusters[key].items.push(item);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      const key = '35.5438,129.2562';
+      if (!onCampusClusters[key]) onCampusClusters[key] = { lat: 35.5438, lng: 129.2562, items: [] };
+      onCampusClusters[key].items.push(item);
+    }
+  });
+  
+  for (let key in onCampusClusters) {
+    const c = onCampusClusters[key];
+    const html = c.items.map(i => `<div>${getIcon(i)} ${i.title}</div>`).join('');
+    const marker = L.marker([c.lat, c.lng]).bindPopup(`<div class="map-popup-title">교내 (${c.items.length}건)</div>${html}`);
+    markersLayer.addLayer(marker);
+    bounds.push([c.lat, c.lng]);
+  }
+  
+  if (offCampusItems.length > 0) {
+    const offLat = 35.5390, offLng = 129.2450;
+    const html = offCampusItems.map(i => `<div>${getIcon(i)} ${i.title}</div>`).join('');
+    const marker = L.marker([offLat, offLng]).bindPopup(`<div class="map-popup-title">교외 (${offCampusItems.length}건)</div>${html}`);
+    markersLayer.addLayer(marker);
+    bounds.push([offLat, offLng]);
+  }
+  
+  if (bounds.length > 0) mapInstance.fitBounds(bounds, { padding: [20, 20], maxZoom: 17 });
+}
+
 /* ── 렌더링 ────────────────────────────────────────────────── */
 function badgesFor(item, dd, done) {
   const out = [];
-  out.push(item.category === '국가근로' ? ['national', '국가근로'] : ['school', '교내근로']);
+  const loc = getLocation(item);
+  if (item.category === '국가근로') {
+    out.push(['national', loc === '교외' ? '국가근로(교외)' : '국가근로(교내)']);
+  } else {
+    out.push(['school', '교내근로']);
+  }
   if (done) {
     out.push(['done', '마감']);
   } else {
@@ -97,13 +205,41 @@ function badgesFor(item, dd, done) {
   return out;
 }
 
-function cardNode(item) {
+function cardNode(item, isHorizontal = false) {
   const tpl = $('cardTpl');
   const node = tpl.content.firstElementChild.cloneNode(true);
   const dd = dDay(item.deadline);
   const done = isDone(item);
-  if (done) node.classList.add('done');
-
+  
+  if (isHorizontal) {
+    node.className = 'h-card ' + (dd !== null && dd <= 3 ? 'red' : 'green');
+    node.innerHTML = `
+      <div class="card-icon">${getIcon(item)}</div>
+      <div class="card-top">
+        <div class="badges"></div>
+        <h3 class="card-title">${item.title || '(제목 없음)'}</h3>
+      </div>
+      <div class="card-org">${item.department || ''}</div>
+      <a class="detail" target="_blank" rel="noopener"${item.url ? ` href="${item.url}"` : ''}>지원하기 →</a>
+    `;
+  } else {
+    if (done) node.classList.add('done');
+    const iconEl = node.querySelector('.card-icon');
+    if(iconEl) iconEl.textContent = getIcon(item);
+    node.querySelector('.card-title').textContent = item.title || '(제목 없음)';
+    node.querySelector('.card-org').textContent = item.department || '';
+    node.querySelector('.hours').textContent = item.hours || '—';
+    node.querySelector('.period').textContent = item.period || '—';
+    node.querySelector('.recruitRange').textContent = item.recruitRange || '—';
+    const dl = node.querySelector('.deadline');
+    dl.textContent = item.deadline ? fmtDate(item.deadline) : '—';
+    if (!done && dd === 0) dl.classList.add('today');
+    else if (!done && dd !== null && dd <= 3) dl.classList.add('soon');
+    const a = node.querySelector('.detail');
+    if (item.url) a.href = item.url;
+    else a.remove();
+  }
+  
   const bw = node.querySelector('.badges');
   for (const [cls, text] of badgesFor(item, dd, done)) {
     const b = document.createElement('span');
@@ -112,52 +248,61 @@ function cardNode(item) {
     bw.appendChild(b);
   }
 
-  node.querySelector('.card-title').textContent = item.title || '(제목 없음)';
-  node.querySelector('.card-org').textContent = item.department || '';
-  node.querySelector('.hours').textContent = item.hours || '—';
-  node.querySelector('.period').textContent = item.period || '—';
-  node.querySelector('.recruitRange').textContent = item.recruitRange || '—';
-
-  const dl = node.querySelector('.deadline');
-  dl.textContent = item.deadline ? fmtDate(item.deadline) : '—';
-  if (!done && dd === 0) dl.classList.add('today');
-  else if (!done && dd !== null && dd <= 3) dl.classList.add('soon');
-
-  const a = node.querySelector('.detail');
-  if (item.url) a.href = item.url;
-  else a.remove();
-
   return node;
 }
 
 function render() {
-  const sectionsEl = $('sections');
-  sectionsEl.innerHTML = '';
-
   const filtered = sortItems(allItems.filter(matches));
-  let visible = 0;
+  
+  if (state.view === 'map') {
+    $('dashboardView').hidden = true;
+    $('mapView').hidden = false;
+    renderMap(filtered);
+  } else {
+    $('dashboardView').hidden = false;
+    $('mapView').hidden = true;
+    
+    const sectionsEl = $('sections');
+    const hSectionsEl = $('horizontalSections');
+    if (hSectionsEl) hSectionsEl.innerHTML = '';
+    if (sectionsEl) sectionsEl.innerHTML = '';
 
-  const groups = state.workType === 'all'
-    ? ['교내근로', '국가근로'].map((g) => [g, filtered.filter((i) => i.category === g)])
-    : [[state.workType, filtered]];
+    const activeItems = filtered.filter(i => !isDone(i));
+    const urgentItems = activeItems.filter(i => { const d = dDay(i.deadline); return d !== null && d <= 3; });
+    const newItems = activeItems.filter(isNew);
+    
+    if (!state.query && (urgentItems.length > 0 || newItems.length > 0) && hSectionsEl) {
+      const topItems = Array.from(new Set([...urgentItems, ...newItems])).slice(0, 8);
+      const sec = $('sectionTpl').content.firstElementChild.cloneNode(true);
+      sec.querySelector('.section-title').textContent = '🔥 추천 공고';
+      sec.querySelector('.section-count').textContent = '마감임박 & 신규';
+      const ul = sec.querySelector('.list');
+      ul.className = 'horizontal-scroll';
+      for (const item of topItems) ul.appendChild(cardNode(item, true));
+      hSectionsEl.appendChild(sec);
+    }
+    
+    let visible = 0;
+    const groups = state.workType === 'all'
+      ? ['교내근로', '국가근로'].map((g) => [g, filtered.filter((i) => i.category === g)])
+      : [[state.workType, filtered]];
 
-  for (const [group, items] of groups) {
-    if (!items.length) continue;
-    const sec = $('sectionTpl').content.firstElementChild.cloneNode(true);
-    const dot = document.createElement('span');
-    dot.className = `dot ${group === '국가근로' ? 'national' : 'school'}`;
-    sec.querySelector('.section-head').prepend(dot);
-    sec.querySelector('.section-title').textContent = group;
-    sec.querySelector('.section-count').textContent = `${items.length}건`;
-    const ul = sec.querySelector('.list');
-    for (const item of items) ul.appendChild(cardNode(item));
-    sectionsEl.appendChild(sec);
-    visible += items.length;
+    for (const [group, items] of groups) {
+      if (!items.length) continue;
+      const sec = $('sectionTpl').content.firstElementChild.cloneNode(true);
+      const dot = document.createElement('span');
+      dot.className = `dot ${group === '국가근로' ? 'national' : 'school'}`;
+      sec.querySelector('.section-head').prepend(dot);
+      sec.querySelector('.section-title').textContent = group;
+      sec.querySelector('.section-count').textContent = `${items.length}건`;
+      const ul = sec.querySelector('.list');
+      for (const item of items) ul.appendChild(cardNode(item));
+      sectionsEl.appendChild(sec);
+      visible += items.length;
+    }
+    $('empty').hidden = visible > 0;
   }
 
-  $('empty').hidden = visible > 0;
-
-  // 상단 통계 (전체 데이터 기준)
   const open = allItems.filter((i) => !isDone(i)).length;
   const todayCount = allItems.filter((i) => dDay(i.deadline) === 0 && !isDone(i)).length;
   const newCount = allItems.filter((i) => isNew(i) && !isDone(i)).length;
@@ -170,8 +315,7 @@ function render() {
 }
 
 /* ── 활성 필터 칩 ──────────────────────────────────────────── */
-function activeFilters() {
-  const out = [];
+
   if (state.workType !== 'all') out.push({ key: 'workType', label: state.workType });
   if (state.soonOnly) out.push({ key: 'soonOnly', label: '마감임박' });
   if (state.newOnly) out.push({ key: 'newOnly', label: '신규' });
@@ -227,6 +371,16 @@ function syncControls() {
 
 /* ── 이벤트 ────────────────────────────────────────────────── */
 function bindEvents() {
+  document.querySelectorAll('#viewSeg .seg').forEach((b) => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('#viewSeg .seg').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      state.view = b.dataset.view;
+      render();
+      if (state.view === 'map' && mapInstance) setTimeout(() => mapInstance.invalidateSize(), 100);
+    });
+  });
+
   $('search').addEventListener('input', (e) => {
     state.query = e.target.value.trim();
     render();

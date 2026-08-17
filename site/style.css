@@ -314,3 +314,46 @@ button { font-family: inherit; }
   .seg { flex: 1; text-align: center; }
 }
 
+
+/* ── 뷰 탭 (대시보드 / 지도) ──────────────────────────────── */
+.view-tabs { display: flex; justify-content: center; margin-top: 16px; margin-bottom: 8px; }
+.view-tabs .segmented { width: 100%; max-width: 320px; display: flex; }
+.view-tabs .seg { flex: 1; text-align: center; font-size: 14px; padding: 8px 0; }
+
+/* ── 지도 뷰 ──────────────────────────────────────────────── */
+.map-view { width: 100%; height: 60vh; min-height: 400px; border-radius: var(--radius-card); overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-top: 16px; border: 1px solid var(--border); position: relative; z-index: 1; }
+#map { width: 100%; height: 100%; z-index: 1; }
+
+.leaflet-popup-content-wrapper { border-radius: 16px !important; box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important; padding: 4px !important; }
+.leaflet-popup-content { margin: 12px !important; font-family: var(--sans); }
+.map-popup-title { font-size: 15px; font-weight: 700; margin: 0 0 4px; letter-spacing: -0.01em; color: var(--ink); }
+.map-popup-org { font-size: 13px; color: var(--secondary); margin: 0 0 8px; }
+.map-popup-badge { display: inline-block; font-size: 11px; padding: 2px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+/* ── 대시보드 횡스크롤 섹션 ──────────────────────────────── */
+.horizontal-scroll { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 24px; padding-top: 8px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.horizontal-scroll::-webkit-scrollbar { display: none; }
+.h-card { flex: 0 0 280px; scroll-snap-align: start; background: var(--surface); border-radius: 20px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 12px; border: 1px solid rgba(0,0,0,0.03); position: relative; overflow: hidden; }
+.h-card::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent); }
+.h-card.red::before { background: var(--red); }
+.h-card.green::before { background: var(--green); }
+.h-card .card-top { flex-direction: column; align-items: flex-start; margin-bottom: 0; gap: 4px; }
+.h-card .card-icon { font-size: 28px; margin-bottom: 4px; }
+.h-card .card-title { font-size: 18px; font-weight: 700; white-space: normal; line-height: 1.3; }
+.h-card .card-org { font-size: 14px; margin-bottom: 4px; }
+.h-card .detail { width: 100%; text-align: center; margin-top: auto; padding: 10px 0; background: var(--accent-soft); color: var(--accent); border-radius: 12px; }
+
+/* ── 일반 카드 개선 ───────────────────────────────────────── */
+.card-icon { font-size: 24px; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: var(--gray-soft); border-radius: 12px; flex-shrink: 0; }
+.card-top { align-items: center; gap: 12px; flex-wrap: nowrap; }
+.card-title-wrap { flex: 1; min-width: 0; }
+.card-title { display: block; font-size: 16px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-org { margin-bottom: 8px; margin-left: 52px; }
+.fields { margin-left: 52px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+
+/* ── 모바일 개선 ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .card-top { flex-direction: row; align-items: center; }
+  .card-org, .fields { margin-left: 0; margin-top: 12px; }
+}
+

@@ -10,6 +10,8 @@
   <meta name="theme-color" content="#F2F2F7" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <link rel="stylesheet" href="./style.css?v=4" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <!-- ── 잠금 화면 ─────────────────────────────────────────── -->
@@ -47,6 +49,12 @@
 
     <main class="wrap">
       <!-- ── 검색 + 필터 버튼 ───────────────────────────────── -->
+      <div class="view-tabs">
+        <div class="segmented" id="viewSeg">
+          <button class="seg active" data-view="dashboard">대시보드</button>
+          <button class="seg" data-view="map">지도</button>
+        </div>
+      </div>
       <div class="toolbar">
         <div class="search-box">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -88,7 +96,16 @@
       </div>
 
       <!-- ── 목록 (섹션별 분류) ─────────────────────────────── -->
-      <div id="sections"></div>
+      
+      <!-- 대시보드 뷰 -->
+      <div id="dashboardView">
+        <div id="horizontalSections"></div>
+        <div id="sections"></div>
+      </div>
+      <!-- 지도 뷰 -->
+      <div id="mapView" class="map-view" hidden>
+        <div id="map"></div>
+      </div>
 
       <div id="empty" class="empty" hidden>
         <p class="empty-title">조건에 맞는 공고가 없습니다</p>
@@ -102,6 +119,7 @@
     <li class="card">
       <div class="card-main">
         <div class="card-top">
+          <div class="card-icon"></div>
           <h3 class="card-title"></h3>
           <span class="badges"></span>
         </div>
