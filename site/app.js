@@ -316,6 +316,8 @@ function render() {
 
 /* ── 활성 필터 칩 ──────────────────────────────────────────── */
 
+function activeFilters() {
+  const out = [];
   if (state.workType !== 'all') out.push({ key: 'workType', label: state.workType });
   if (state.soonOnly) out.push({ key: 'soonOnly', label: '마감임박' });
   if (state.newOnly) out.push({ key: 'newOnly', label: '신규' });
